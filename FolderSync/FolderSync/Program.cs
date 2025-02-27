@@ -10,10 +10,10 @@ class FolderSync
 
     public FolderSync(string sourcePath, string destinationPath, string logPath, int syncFreq)
     {
-        this.logFilePath = logFilePath;
-        this.sourceFilePath = sourceFilePath;
-        this.destinationFilePath = destinationFilePath;
-        this.syncFrequency = syncFrequency;
+        this.logFilePath = logPath;
+        this.sourceFilePath = sourcePath;
+        this.destinationFilePath = destinationPath;
+        this.syncFrequency = syncFreq;
     }
 
     private void Log(string message)
@@ -25,7 +25,44 @@ class FolderSync
 
     private void synchronizeFolders()
     {
+        if (!Directory.Exists(sourceFilePath))
+        {
+            Log("Error: The source folder does not exist.");
+            return;
+        }
 
+        Directory.CreateDirectory(destinationFilePath);
+
+        var sourceFiles = Directory.GetFiles(sourceFilePath);
+        var backupFiles = Directory.GetFiles(destinationFilePath);
+
+        foreach (var file in sourceFiles)
+        {
+            var relativePath = file.Substring(sourceFilePath.Length + 1);
+            var backupFile = Path.Combine(destinationFilePath, relativePath);
+
+            var backupDir = Path.GetDirectoryName(backupFile);
+            if (!Directory.Exists(backupDir))
+                Directory.CreateDirectory(backupDir);
+
+            if (!File.Exists(backupFile) || !filesAreEqual(file, backupFile))
+            {
+                File.Copy(file, backupFile, true);
+                Log($"Folder copied/updated: {relativePath}");
+            }
+        }
+
+        foreach (var file in backupFiles)
+        {
+            var relativePath = file.Substring(destinationFilePath.Length + 1);
+            var sourceFile = Path.Combine(sourceFilePath, relativePath);
+
+            if (!File.Exists(sourceFile))
+            {
+                File.Delete(file);
+                Log($"Files removed: {relativePath}");
+            }
+        }
     }
 
     private bool filesAreEqual(string file1Path, string file2Path)
@@ -61,7 +98,7 @@ class FolderSync
     {
         if (args.Length != 4)
         {
-            Console.WriteLine("Uso: FolderSync <sourcePath> <replicaPath> <logFilePath> <syncIntervalInSeconds>");
+            Console.WriteLine("Use: FolderSync <sourcePath> <backupPath> <logFilePath> <syncIntervalInSeconds>");
             return;
         }
 
