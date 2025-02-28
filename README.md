@@ -36,8 +36,6 @@ If using the command line, navigate to the project directory (where the .csproj 
 
 Run
 
-Navigate to FolderSync\FolderSync\FolderSync\bin\Debug\net8.0
-
 To execute the program, use the following command:
 
  FolderSync.exe "<sourcePath>" "<backupPath>" "<logFilePath>" <syncIntervalInSeconds>
