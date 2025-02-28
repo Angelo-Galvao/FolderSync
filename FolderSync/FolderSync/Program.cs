@@ -13,7 +13,7 @@ class FolderSync
         this.logFilePath = logPath;
         this.sourceFilePath = sourcePath;
         this.destinationFilePath = destinationPath;
-        this.syncFrequency = syncFreq;
+        this.syncFrequency = syncFreq*1000;
     }
 
     private void Log(string message)
@@ -33,22 +33,31 @@ class FolderSync
 
         Directory.CreateDirectory(destinationFilePath);
 
-        var sourceFiles = Directory.GetFiles(sourceFilePath);
-        var backupFiles = Directory.GetFiles(destinationFilePath);
+        var sourceFiles = Directory.GetFiles(sourceFilePath, "*", SearchOption.AllDirectories);
+        var sourceDirectories = Directory.GetDirectories(sourceFilePath, "*", SearchOption.AllDirectories);
+        var backupFiles = Directory.GetFiles(destinationFilePath, "*", SearchOption.AllDirectories);
+        var backupDirectories = Directory.GetDirectories(destinationFilePath, "*", SearchOption.AllDirectories);
+
+        foreach (var dir in sourceDirectories)
+        {
+            var relativePath = dir.Substring(sourceFilePath.Length + 1);
+            var backupDir = Path.Combine(destinationFilePath, relativePath);
+            if (!Directory.Exists(backupDir))
+            {
+                Directory.CreateDirectory(backupDir);
+                Log($"Directory created: {relativePath}");
+            }
+        }
 
         foreach (var file in sourceFiles)
         {
             var relativePath = file.Substring(sourceFilePath.Length + 1);
             var backupFile = Path.Combine(destinationFilePath, relativePath);
 
-            var backupDir = Path.GetDirectoryName(backupFile);
-            if (!Directory.Exists(backupDir))
-                Directory.CreateDirectory(backupDir);
-
             if (!File.Exists(backupFile) || !filesAreEqual(file, backupFile))
             {
                 File.Copy(file, backupFile, true);
-                Log($"Folder copied/updated: {relativePath}");
+                Log($"File copied/updated: {relativePath}");
             }
         }
 
@@ -60,13 +69,30 @@ class FolderSync
             if (!File.Exists(sourceFile))
             {
                 File.Delete(file);
-                Log($"Files removed: {relativePath}");
+                Log($"File removed: {relativePath}");
+            }
+        }
+
+        foreach (var dir in backupDirectories.OrderByDescending(d => d.Length))
+        {
+            var relativePath = dir.Substring(destinationFilePath.Length + 1);
+            var sourceDir = Path.Combine(sourceFilePath, relativePath);
+
+            if (!Directory.Exists(sourceDir) && Directory.Exists(dir) && Directory.GetFileSystemEntries(dir).Length == 0)
+            {
+                Directory.Delete(dir);
+                Log($"Directory removed: {relativePath}");
             }
         }
     }
 
     private bool filesAreEqual(string file1Path, string file2Path)
     {
+        if (IsFileLocked(file1Path) || IsFileLocked(file2Path))
+        {
+            return true;
+        }
+
         using var md5 = MD5.Create();
         using var stream1 = File.OpenRead(file1Path);
         using var stream2 = File.OpenRead(file2Path);
@@ -75,6 +101,19 @@ class FolderSync
         var hash2 = md5.ComputeHash(stream2);
 
         return hash1.SequenceEqual(hash2);
+    }
+
+    private bool IsFileLocked(string filePath)
+    {
+        try
+        {
+            using FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
     }
 
     private void Start()
@@ -94,7 +133,7 @@ class FolderSync
         }
     }
 
-    public static void main(string[] args)
+    public static void Main(string[] args)
     {
         if (args.Length != 4)
         {

@@ -4,13 +4,20 @@ Description
 
 FolderSync is a C# application that synchronizes two folders (source and backup), ensuring that the destination folder (backup) always contains an identical copy of the source folder. Synchronization is performed periodically, and all operations are logged.
 
+
 Features
 
-One-way synchronization: The backup is always updated to match the source.
+One-way synchronization: The replica is always updated to match the source.
 
-Operation logging: Logs of all operations.
+Change detection: Copies new files and updates existing ones.
+
+File removal: Deletes files from the replica that no longer exist in the source.
+
+Operation logging: Detailed logs of all operations.
 
 Periodic execution: Synchronization occurs automatically at configurable intervals.
+
+Integrity verification: Uses MD5 to ensure files are identical.
 
 
 How to Build and Run
@@ -19,18 +26,23 @@ Requirements
 
 .NET 8.0 or later installed.
 
-A compatible development environment (e.g. Visual Studio).
-
+A compatible development environment (e.g. Visual Studio)
 
 Build
 
+If using the command line, navigate to the project directory (where the .csproj file is present) and run:
 
+ dotnet build
 
 Run
 
 To execute the program, use the following command:
 
- FolderSync.exe <sourcePath> <backupPath> <logFilePath> <syncIntervalInSeconds>
+ FolderSync.exe "<sourcePath>" "<backupPath>" "<logFilePath>" <syncIntervalInSeconds>
+
+ 	or, if you're using the Windows Powershell
+
+ .\FolderSync.exe <sourcePath>" "<backupPath>" "<logFilePath>" <syncIntervalInSeconds>
 
 Example:
 
@@ -39,17 +51,13 @@ Example:
 This will synchronize C:\SourceFolder with C:\BackupFolder every 60 seconds, logging the actions in sync.log.
 
 
-Project Structure
-
-
-
 Future Improvements
 
 Implement a Windows service to run the application automatically in the background.
 
 Improve logging with structured formats (JSON).
 
-Create a graphical user interface (GUI) for easy configuration and better readability.
+Create a graphical user interface for easy configuration and better readability.
 
 
 License
