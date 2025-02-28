@@ -33,6 +33,15 @@ class FolderSync
 
         Directory.CreateDirectory(destinationFilePath);
 
+        long totalSourceSize = GetDirectorySize(sourceFilePath);
+        long availableSpace = GetAvailableFreeSpace(destinationFilePath);
+
+        if (availableSpace < totalSourceSize)
+        {
+            Log($"Error: Not enough space for synchronization. Required: {totalSourceSize} bytes, Available: {availableSpace} bytes.");
+            return;
+        }
+
         var sourceFiles = Directory.GetFiles(sourceFilePath, "*", SearchOption.AllDirectories);
         var sourceDirectories = Directory.GetDirectories(sourceFilePath, "*", SearchOption.AllDirectories);
         var backupFiles = Directory.GetFiles(destinationFilePath, "*", SearchOption.AllDirectories);
@@ -53,6 +62,15 @@ class FolderSync
         {
             var relativePath = file.Substring(sourceFilePath.Length + 1);
             var backupFile = Path.Combine(destinationFilePath, relativePath);
+
+            long fileSize = new FileInfo(file).Length;
+            long freeSpace = GetAvailableFreeSpace(destinationFilePath);
+
+            if (freeSpace < fileSize)
+            {
+                Log($"Error: Not enough space to copy {relativePath}. Required: {fileSize} bytes, Available: {freeSpace} bytes.");
+                continue;
+            }
 
             if (!File.Exists(backupFile) || !filesAreEqual(file, backupFile))
             {
@@ -86,8 +104,36 @@ class FolderSync
         }
     }
 
+    private long GetAvailableFreeSpace(string path)
+    {
+        string? root = Path.GetPathRoot(path);
+
+        if (string.IsNullOrEmpty(root))
+        {
+            Log("Error: Could not determine the drive for the path: " + path);
+            return 0;
+        }
+
+        DriveInfo drive = new DriveInfo(root);
+        return drive.AvailableFreeSpace;
+    }
+
+    private long GetDirectorySize(string path)
+    {
+        return Directory.GetFiles(path, "*", SearchOption.AllDirectories)
+                        .Sum(file => new FileInfo(file).Length);
+    }
+
     private bool filesAreEqual(string file1Path, string file2Path)
     {
+        FileInfo fileInfo1 = new FileInfo(file1Path);
+        FileInfo fileInfo2 = new FileInfo(file2Path);
+
+        if (fileInfo1.Length != fileInfo2.Length || fileInfo1.LastWriteTimeUtc != fileInfo2.LastWriteTimeUtc)
+        {
+            return false;
+        }
+
         if (IsFileLocked(file1Path) || IsFileLocked(file2Path))
         {
             return true;
@@ -140,6 +186,8 @@ class FolderSync
             Console.WriteLine("Use: FolderSync <sourcePath> <backupPath> <logFilePath> <syncIntervalInSeconds>");
             return;
         }
+
+        Console.WriteLine("To stop the program, press CTRL+C");
 
         var source = args[0];
         var destination = args[1];

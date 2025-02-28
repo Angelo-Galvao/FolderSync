@@ -53,7 +53,7 @@ This will synchronize C:\SourceFolder with C:\BackupFolder every 60 seconds, log
 
 Future Improvements
 
-Implement a Windows service to run the application automatically in the background.
+Implement a Windows service to run the application automatically in the background instead of putting a thread to sleep. This affects programs where the synchronization interval is bigger.
 
 Improve logging with structured formats (JSON).
 
